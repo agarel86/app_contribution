@@ -245,7 +245,7 @@ table.pt tr.nonpaper{opacity:.35}
    Data & state
    ═══════════════════════════════════════════════════ */
 const DATA_URL="explorer_data.json";
-let P={},A={},pids=[],harm={},sims={},oSim={},pTitles={};
+let P={},A={},pids=[],harm={},oSim={},pTitles={};
 
 const TC={
  "New Empirical Evidence":{c:"#1864ab",bg:"rgba(24,100,171,.08)",f:"rgba(24,100,171,.72)"},
@@ -310,7 +310,7 @@ async function boot(){
   const D=await r.json();
   P=D.papers;A=D.analysis;
   pids=A.paper_ids||[];harm=A.paper_harmonized||{};
-  sims=A.similarities||{};oSim=A.overall_similarity||{};
+  oSim=A.overall_similarity||{};
   pTitles=A.paper_titles||{};
  }catch(e){
   document.body.innerHTML='<div style="padding:3rem;color:#c00;font-family:system-ui"><h2>Cannot load data</h2><p>'+esc(String(e))+'</p><p style="margin-top:1rem">Run <code>python -m http.server 8765</code></p></div>';
