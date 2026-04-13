@@ -215,16 +215,13 @@ table.pt tr.nonpaper{opacity:.35}
   <div class="af-group"><label>Academic field</label><select id="aField"><option value="">All fields</option></select></div>
   <div class="af-group"><label>Subfield</label><select id="aSubfield"><option value="">All subfields</option></select></div>
   <div class="af-group"><label>Contribution type</label><select id="aType"><option value="">All types</option></select></div>
-  <div class="af-group"><label>Contribution subtype</label><select id="aCSub"><option value="">All subtypes</option></select></div>
   <div class="af-group"><label>Paper type</label><select id="aPT"><option value="">All</option></select></div>
   <div class="af-group"><label>Topic</label><select id="aTopic"><option value="">All topics</option></select></div>
   <div class="af-group"><label>Subtopic</label><select id="aSubtopic"><option value="">All subtopics</option></select></div>
  </div>
  <div class="cgrid">
   <div class="ccard"><h3>Contribution type distribution</h3><canvas id="chType"></canvas></div>
-  <div class="ccard"><h3>Contribution subtype distribution</h3><canvas id="chSub"></canvas></div>
   <div class="ccard cwide"><h3>Contribution types over time</h3><canvas id="chTime"></canvas></div>
-  <div class="ccard cwide"><h3>Contribution subtypes over time</h3><canvas id="chSubTime"></canvas></div>
   <div class="ccard"><h3>By academic field</h3><canvas id="chField"></canvas></div>
   <div class="ccard"><h3>Methodology distribution (top 20)</h3><canvas id="chMeth"></canvas></div>
   <div class="ccard cwide"><h3>Type &times; Field concentration</h3><div id="heatmapBox"></div></div>
@@ -629,13 +626,12 @@ function initAnalytics(){
  populateSel("aField",()=>{const s=new Set();pids.forEach(id=>{const f=pField(id);if(f)s.add(f)});return[...s].sort()});
  populateSel("aSubfield",()=>{const s=new Set();pids.forEach(id=>pSubfields(id).forEach(v=>s.add(v)));return[...s].sort()});
  populateSel("aType",()=>TO.filter(t=>pids.some(id=>pType(id)===t)));
- repopulateCSub();
  populateSel("aPT",()=>{const s=new Set();pids.forEach(id=>{const pt=pPT(id);if(pt)s.add(pt)});return[...s].sort()});
  populateSel("aTopic",()=>{const s=new Set();pids.forEach(id=>pTopics(id).forEach(v=>s.add(v)));return[...s].sort()});
  populateSel("aSubtopic",()=>{const s=new Set();pids.forEach(id=>pSubtopics(id).forEach(v=>s.add(v)));return[...s].sort()});
 
- document.getElementById("aType").onchange=()=>{repopulateCSub();updateAna()};
- ["aField","aSubfield","aCSub","aPT","aTopic","aSubtopic"].forEach(id=>document.getElementById(id).onchange=updateAna);
+ document.getElementById("aType").onchange=updateAna;
+ ["aField","aSubfield","aPT","aTopic","aSubtopic"].forEach(id=>document.getElementById(id).onchange=updateAna);
 
  Chart.defaults.color="#868e96";
  Chart.defaults.borderColor="rgba(0,0,0,.08)";
@@ -649,18 +645,10 @@ function populateSel(id,getVals){
  sel.innerHTML=first+getVals().map(v=>'<option value="'+escA(v)+'">'+esc(v)+'</option>').join("");
 }
 
-function repopulateCSub(){
- const selType=document.getElementById("aType").value;
- const relevant=selType?pids.filter(id=>pType(id)===selType):pids;
- const s=new Set();relevant.forEach(id=>pSubs(id).forEach(v=>s.add(v)));
- populateSel("aCSub",()=>[...s].sort());
-}
-
 function anaFiltered(){
  const f=document.getElementById("aField").value;
  const sf=document.getElementById("aSubfield").value;
  const t=document.getElementById("aType").value;
- const csub=document.getElementById("aCSub").value;
  const pt=document.getElementById("aPT").value;
  const tp=document.getElementById("aTopic").value;
  const stp=document.getElementById("aSubtopic").value;
@@ -669,7 +657,6 @@ function anaFiltered(){
   if(f&&pField(id)!==f)return false;
   if(sf&&!pSubfields(id).includes(sf))return false;
   if(t&&pType(id)!==t)return false;
-  if(csub&&!pSubs(id).includes(csub))return false;
   if(pt&&pPT(id)!==pt)return false;
   if(tp&&!pTopics(id).includes(tp))return false;
   if(stp&&!pSubtopics(id).includes(stp))return false;
@@ -681,7 +668,7 @@ function dx(k){if(CH[k]){CH[k].destroy();delete CH[k]}}
 
 function updateAna(){
  const fp=anaFiltered();
- mkTypeChart(fp);mkSubChart(fp);mkTimeChart(fp);mkSubTimeChart(fp);mkFieldChart(fp);mkMethChart(fp);mkHeatmap(fp);mkSubfieldChart(fp);mkTopicChart(fp);mkSubtopicChart(fp);mkTopicTimeChart(fp);mkSubtopicTimeChart(fp);mkMethTimeChart(fp);mkSubfieldTimeChart(fp);
+ mkTypeChart(fp);mkTimeChart(fp);mkFieldChart(fp);mkMethChart(fp);mkHeatmap(fp);mkSubfieldChart(fp);mkTopicChart(fp);mkSubtopicChart(fp);mkTopicTimeChart(fp);mkSubtopicTimeChart(fp);mkMethTimeChart(fp);mkSubfieldTimeChart(fp);
 }
 
 function mkTypeChart(fp){
@@ -691,13 +678,6 @@ function mkTypeChart(fp){
  CH.type=new Chart(document.getElementById("chType"),{type:"doughnut",data:{labels,datasets:[{data:labels.map(l=>c[l]),backgroundColor:labels.map(l=>tc(l).f),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{padding:10,usePointStyle:true,pointStyleWidth:10,font:{size:10}}}}}});
 }
 
-function mkSubChart(fp){
- dx("sub");
- const c={};fp.forEach(id=>pSubs(id).forEach(s=>{c[s]=(c[s]||0)+1}));
- const sorted=Object.entries(c).sort((a,b)=>b[1]-a[1]);
- CH.sub=new Chart(document.getElementById("chSub"),{type:"bar",data:{labels:sorted.map(e=>e[0]),datasets:[{data:sorted.map(e=>e[1]),backgroundColor:sorted.map((_,i)=>"hsl("+(210+i*40)+",55%,55%)"),borderWidth:0,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{grid:{color:"rgba(0,0,0,.06)"}},y:{grid:{display:false},ticks:{font:{size:10}}}}}});
-}
-
 function mkTimeChart(fp){
  dx("time");
  const byYT={};const years=new Set();
@@ -705,18 +685,6 @@ function mkTimeChart(fp){
  const sy=[...years].sort();if(!sy.length)return;
  const types=TO.filter(t=>byYT[t]);Object.keys(byYT).sort().forEach(t=>{if(!types.includes(t))types.push(t)});
  CH.time=new Chart(document.getElementById("chTime"),{type:"bar",data:{labels:sy.map(String),datasets:types.map(t=>({label:t,data:sy.map(y=>byYT[t]?.[y]||0),backgroundColor:tc(t).f,borderColor:tc(t).c,borderWidth:1,borderRadius:2}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{padding:8,usePointStyle:true,pointStyleWidth:8,font:{size:9}}}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:{color:"rgba(0,0,0,.06)"},ticks:{stepSize:10}}}}});
-}
-
-function mkSubTimeChart(fp){
- dx("subTime");
- const byYS={};const years=new Set();
- const subColors=["#1864ab","#7048a0","#0b7285","#d9480f","#c92a2a","#2b8a3e","#862e9c"];
- fp.forEach(id=>{const y=pYear(id);if(!y)return;years.add(y);pSubs(id).forEach(s=>{if(!byYS[s])byYS[s]={};byYS[s][y]=(byYS[s][y]||0)+1})});
- const sy=[...years].sort();if(!sy.length)return;
- const allSubs=Object.entries(byYS).sort((a,b)=>{const ta=Object.values(a[1]).reduce((x,y)=>x+y,0);const tb=Object.values(b[1]).reduce((x,y)=>x+y,0);return tb-ta});
- const subNames=allSubs.map(e=>e[0]);
- if(!subNames.length)return;
- CH.subTime=new Chart(document.getElementById("chSubTime"),{type:"bar",data:{labels:sy.map(String),datasets:subNames.map((s,i)=>({label:s,data:sy.map(y=>byYS[s]?.[y]||0),backgroundColor:subColors[i%subColors.length],borderWidth:0,borderRadius:1}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{padding:8,usePointStyle:true,pointStyleWidth:8,font:{size:9}}}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:{color:"rgba(0,0,0,.06)"},ticks:{stepSize:10}}}}});
 }
 
 function mkFieldChart(fp){
